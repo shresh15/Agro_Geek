@@ -9,6 +9,7 @@ const Navbar = ({
   showDropdown,
   setShowDropdown,
   handleLogout,
+  onMyListingsClick,
 }) => {
   return (
     <div className="flex flex-row justify-center items-center">
@@ -49,40 +50,49 @@ const Navbar = ({
           </div>
         </div>
 
-        {/* 🔹 Profile Picture with Dropdown */}
-        <div className="relative">
-          <div
-            className="bg-green-900 h-12 w-12 rounded-full mr-10 flex items-center justify-center overflow-hidden cursor-pointer"
-            onClick={() => setShowDropdown(!showDropdown)}
-          >
-            {profilePicture ? (
-              <img
-                src={profilePicture}
-                alt="Profile"
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-white">👤</span>
+        {/* 🔹 Profile Section with Dropdown & History */}
+        <div className="flex flex-row items-center gap-8 mr-10">
+          {onMyListingsClick && (
+            <button
+              onClick={onMyListingsClick}
+              className="bg-green-800 hover:bg-green-700 text-white text-sm px-4 py-2 rounded-lg font-bold transition duration-200 shadow hover:shadow-lg select-none"
+            >
+              My Listings
+            </button>
+          )}
+
+          {/* 🔹 Profile Picture with Dropdown */}
+          <div className="relative">
+            <div
+              className="bg-green-900 h-12 w-12 rounded-full flex items-center justify-center overflow-hidden cursor-pointer"
+              onClick={() => setShowDropdown(!showDropdown)}
+            >
+              {profilePicture ? (
+                <img
+                  src={profilePicture}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-white">👤</span>
+              )}
+            </div>
+
+            {/* 🔹 Logout Dropdown */}
+            {showDropdown && (
+              <div 
+                className="absolute mt-2 w-32 bg-white shadow-lg rounded-md border border-slate-100 z-50"
+                style={{ right: 0 }}
+              >
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 text-sm font-semibold transition"
+                >
+                  Logout
+                </button>
+              </div>
             )}
           </div>
-
-          {/* 🔹 Logout Dropdown */}
-          {showDropdown && (
-            <div className="absolute right-0 mt-10 w-32 bg-transparent shadow-md rounded-md">
-              {/* <button
-                // onClick={handleLogout}
-                className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
-              >
-                Responses
-              </button> */}
-              <button
-                onClick={handleLogout}
-                className="w-full text-left px-4 py-2 text-red-600 hover:bg-gray-100"
-              >
-                Logout
-              </button>
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -31,6 +31,11 @@ const Farmer = () => {
   const [sellerType, setSellerType] = useState("");
   const [contactNumber, setContactNumber] = useState("");
   const [address, setAddress] = useState("");
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [historyListings, setHistoryListings] = useState([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [tempEmail, setTempEmail] = useState("");
+  const [userEmail, setUserEmail] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,7 +43,72 @@ const Farmer = () => {
     if (storedProfileImage) {
       setProfilePicture(storedProfileImage);
     }
+
+    const fetchUserProfile = async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) return;
+      try {
+        const response = await axios.get(`${BACKEND_URL}/api/auth/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data?.success && response.data?.user) {
+          setUserEmail(response.data.user.email);
+          if (response.data.user.phone) setContactNumber(response.data.user.phone);
+          if (response.data.user.address) setAddress(response.data.user.address);
+        }
+      } catch (error) {
+        console.error("❌ Error fetching user profile from MongoDB:", error);
+      }
+    };
+
+    fetchUserProfile();
   }, []);
+
+  // ✅ Fetch history submissions for the logged in seller
+  const handleOpenHistory = async () => {
+    const emailToQuery = userEmail || localStorage.getItem("userEmail");
+    setShowHistoryModal(true);
+    if (!emailToQuery) {
+      setHistoryListings([]);
+      return;
+    }
+
+    setIsLoadingHistory(true);
+    try {
+      const response = await axios.get(
+        `${BACKEND_URL}/api/farmer/my-submissions?email=${emailToQuery}`
+      );
+      setHistoryListings(response.data.data || []);
+    } catch (error) {
+      console.error("❌ Error fetching history listings:", error);
+      alert("❌ Failed to fetch your listing history.");
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
+
+  // ✅ Fetch history submissions when email is manually submitted
+  const handleFetchHistoryWithEmail = async () => {
+    if (!tempEmail || !tempEmail.includes("@")) {
+      alert("⚠️ Please enter a valid email address.");
+      return;
+    }
+
+    setIsLoadingHistory(true);
+    try {
+      const response = await axios.get(
+        `${BACKEND_URL}/api/farmer/my-submissions?email=${tempEmail}`
+      );
+      setHistoryListings(response.data.data || []);
+      setUserEmail(tempEmail);
+      localStorage.setItem("userEmail", tempEmail);
+    } catch (error) {
+      console.error("❌ Error fetching history listings:", error);
+      alert("❌ Failed to fetch your listing history.");
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
 
   // ✅ Handle Logout
   const handleLogout = () => {
@@ -148,6 +218,7 @@ const Farmer = () => {
     formData.append("sellerType", sellerType);
     formData.append("contactNumber", contactNumber);
     formData.append("address", address);
+    formData.append("sellerEmail", localStorage.getItem("userEmail") || "");
     if (category === "medicinal_plants") {
       formData.append("subType", subType);
     }
@@ -210,6 +281,7 @@ const Farmer = () => {
         showDropdown={showDropdown}
         setShowDropdown={setShowDropdown}
         handleLogout={handleLogout}
+        onMyListingsClick={handleOpenHistory}
       />
 
       {/* 🔹 Scrollable Content Container */}
@@ -512,6 +584,122 @@ const Farmer = () => {
           </button>
         </div>
       </div>
+
+      {/* 🔹 My Listings History Overlay Modal */}
+      {showHistoryModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all duration-300">
+          <div className="bg-white/95 dark:bg-slate-900/95 max-w-4xl w-full max-h-[85vh] rounded-2xl shadow-2xl border border-white/20 flex flex-col overflow-hidden animate-fade-in">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
+              <div className="text-left">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Your Listed Batches</h3>
+                <p className="text-xs text-slate-500">History of entries submitted from your account</p>
+              </div>
+              <button
+                onClick={() => setShowHistoryModal(false)}
+                className="h-9 w-9 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-full flex items-center justify-center font-bold text-lg transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {!(userEmail || localStorage.getItem("userEmail")) ? (
+                <div className="flex flex-col items-center justify-center py-8 px-4 text-center max-w-md mx-auto">
+                  <span className="text-4xl mb-3">🔑</span>
+                  <h4 className="font-bold text-slate-800 dark:text-white mb-1">Verify Email to load history</h4>
+                  <p className="text-xs text-slate-500 mb-4">We couldn't detect your email in this browser session. Enter it below to fetch your listed items.</p>
+                  <div className="flex gap-2 w-full">
+                    <input
+                      type="email"
+                      placeholder="your-email@example.com"
+                      value={tempEmail}
+                      onChange={(e) => setTempEmail(e.target.value)}
+                      className="border p-2.5 rounded-lg shadow-sm text-sm w-full focus:ring-2 focus:ring-green-900 text-black border-gray-300"
+                    />
+                    <button
+                      onClick={handleFetchHistoryWithEmail}
+                      className="bg-green-700 hover:bg-green-600 text-white font-semibold text-sm px-4 py-2 rounded-lg transition duration-200"
+                    >
+                      Load
+                    </button>
+                  </div>
+                </div>
+              ) : isLoadingHistory ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-800 mb-3"></div>
+                  <p className="text-sm text-slate-500">Retrieving your submissions...</p>
+                </div>
+              ) : historyListings.length === 0 ? (
+                <div className="text-center py-12">
+                  <span className="text-4xl">🌾</span>
+                  <p className="text-slate-500 mt-2 font-medium">You haven't listed any items yet.</p>
+                  <p className="text-xs text-slate-400 mt-1">Submit your first batch using the form behind this panel.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {historyListings.map((item) => (
+                    <div key={item._id} className="bg-slate-50/50 dark:bg-slate-800/30 p-4 rounded-xl border border-slate-200/50 flex flex-col gap-3">
+                      {/* Display Image (using backend base URL) */}
+                      {item.imagePaths?.[0] ? (
+                        <img
+                          src={`${BACKEND_URL}/${item.imagePaths[0]}`}
+                          alt={item.entityName}
+                          className="w-full h-36 object-cover rounded-lg shadow-sm"
+                        />
+                      ) : (
+                        <div className="w-full h-36 bg-slate-100 flex items-center justify-center rounded-lg text-slate-400">
+                          No Images Uploaded
+                        </div>
+                      )}
+
+                      <div className="flex flex-col gap-1 text-left">
+                        <span className="text-[10px] uppercase font-bold text-green-700 tracking-wider">
+                          {item.category.replace("_", " ")}
+                        </span>
+                        <h4 className="font-bold text-slate-950 text-base leading-tight">
+                          {item.entityName}
+                        </h4>
+                        {item.subType && (
+                          <span className="text-xs text-slate-600 font-semibold italic">
+                            Specie: {item.subType}
+                          </span>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-1 mt-2 border-t pt-2 text-xs text-slate-600">
+                          <div>
+                            <strong>Qty:</strong> {item.amount} kg
+                          </div>
+                          <div>
+                            <strong>Price:</strong> ₹{item.pricePerAmount}/kg
+                          </div>
+                          <div>
+                            <strong>Moisture:</strong> {item.moistureLevel || "N/A"}
+                          </div>
+                          <div>
+                            <strong>Packaging:</strong> {item.packagingType || "N/A"}
+                          </div>
+                          <div>
+                            <strong>MOQ:</strong> {item.minOrderQuantity || 0} kg
+                          </div>
+                          <div>
+                            <strong>Lead Time:</strong> {item.deliveryDays} Days
+                          </div>
+                        </div>
+                        
+                        <div className="mt-2 text-[10px] text-slate-400 text-right">
+                          Listed on: {new Date(item.createdAt).toLocaleDateString()}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
