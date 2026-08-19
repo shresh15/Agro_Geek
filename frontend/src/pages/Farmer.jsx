@@ -30,6 +30,7 @@ const Farmer = () => {
   const [isNegotiable, setIsNegotiable] = useState(false);
   const [sellerType, setSellerType] = useState("");
   const [contactNumber, setContactNumber] = useState("");
+  const [address, setAddress] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -108,6 +109,7 @@ const Farmer = () => {
     if (!sellerType) errors.sellerType = "Please select your seller profile type.";
     if (!contactNumber || !/^\d{10}$/.test(contactNumber))
       errors.contactNumber = "Please enter a valid 10-digit contact number.";
+    if (!address) errors.address = "Please enter your full address.";
     if (!entityName) errors.entityName = "Please enter an entity name.";
     if (!amount || isNaN(amount))
       errors.amount = "Please enter a valid amount.";
@@ -145,6 +147,7 @@ const Farmer = () => {
     formData.append("isNegotiable", isNegotiable);
     formData.append("sellerType", sellerType);
     formData.append("contactNumber", contactNumber);
+    formData.append("address", address);
     if (category === "medicinal_plants") {
       formData.append("subType", subType);
     }
@@ -183,6 +186,7 @@ const Farmer = () => {
       setIsNegotiable(false);
       setSellerType("");
       setContactNumber("");
+      setAddress("");
       setImages([]);
       setImageFiles([]);
       setFormErrors({});
@@ -210,295 +214,301 @@ const Farmer = () => {
 
       {/* 🔹 Scrollable Content Container */}
       <div className="pt-4 pb-8">
-        <h1 className="text-4xl font-bold text-center text-green-900">
-          Seller's Arena
-        </h1>
+        <div className="max-w-6xl mx-auto bg-white p-8 mt-6 shadow-xl rounded-2xl border border-slate-100">
+          <h2 className="text-3xl font-extrabold text-green-955 mb-6 pb-2 border-b text-center md:text-left dark:text-green-900">Upload Your Agricultural Batches</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            
+            {/* 🔹 COLUMN 1: Material Details */}
+            <div className="flex flex-col gap-1 text-left">
+              <h3 className="text-lg font-bold text-green-800 mb-3 pb-1 border-b border-emerald-50">1. Material Details</h3>
+              
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Category</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
+              >
+                <option value="">Select a category</option>
+                <option value="fallen_leaves">Fallen Leaves</option>
+                <option value="wood">Wood</option>
+                <option value="medicinal_plants">Medicinal Plants (Ayurvedic)</option>
+              </select>
+              {formErrors.category && (
+                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.category}</p>
+              )}
 
-        <div className="max-w-2xl mx-auto bg-white p-6 mt-6 shadow-md rounded-lg">
-          <h2 className="text-2xl font-semibold mb-4">Upload the entities</h2>
-          {/* 🔹 Category Selection Dropdown */}
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="border p-3 shadow-md bg-white dark:text-black
-             dark:border-gray-700 border-gray-300 rounded-lg w-full 
-             focus:ring-2 focus:ring-green-900 transition
-              transform hover:scale-105 duration-300 mb-3"
-          >
-            <option value="">Select a category</option>
-            <option value="fallen_leaves">Fallen Leaves</option>
-            <option value="wood">Wood</option>
-            <option value="medicinal_plants">
-              Medicinal Plants (Ayurvedic)
-            </option>
-          </select>
-          {formErrors.category && (
-            <p className="text-red-500 text-sm mb-4">{formErrors.category}</p>
-          )}
+              {category === "medicinal_plants" && (
+                <>
+                  <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Botanical/Plant Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Neem, Tulsi, Ashwagandha"
+                    value={subType}
+                    onChange={(e) => setSubType(e.target.value)}
+                    className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
+                  />
+                  {formErrors.subType && (
+                    <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.subType}</p>
+                  )}
+                </>
+              )}
 
-          {/* 🔹 Waste Sub-type Detail (Conditional for Ayurvedic Plants) */}
-          {category === "medicinal_plants" && (
-            <>
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Moisture Level</label>
+              <select
+                value={moistureLevel}
+                onChange={(e) => setMoistureLevel(e.target.value)}
+                className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
+              >
+                <option value="">Select Moisture Level</option>
+                <option value="Dry">Dry</option>
+                <option value="Semi-dry">Semi-dry</option>
+                <option value="Wet">Wet</option>
+              </select>
+              {formErrors.moistureLevel && (
+                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.moistureLevel}</p>
+              )}
+
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Batch Title (Entity Name)</label>
               <input
                 type="text"
-                placeholder="Specific Plant Name (e.g. Neem, Tulsi, Ashwagandha)"
-                value={subType}
-                onChange={(e) => setSubType(e.target.value)}
-                className="border p-3 shadow-md bg-white dark:text-black dark:border-gray-700 border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 transition transform hover:scale-105 duration-300 mb-3"
+                placeholder="e.g. Dried Tulsi Leaves Batch A"
+                value={entityName}
+                onChange={(e) => setEntityName(e.target.value)}
+                className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
               />
-              {formErrors.subType && (
-                <p className="text-red-500 text-sm mb-4">{formErrors.subType}</p>
+              {formErrors.entityName && (
+                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.entityName}</p>
               )}
-            </>
-          )}
 
-          {/* 🔹 Moisture / Dryness Level Dropdown */}
-          <select
-            value={moistureLevel}
-            onChange={(e) => setMoistureLevel(e.target.value)}
-            className="border p-3 shadow-md bg-white dark:text-black dark:border-gray-700 border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 transition transform hover:scale-105 duration-300 mb-3"
-          >
-            <option value="">Select Moisture Level</option>
-            <option value="Dry">Dry</option>
-            <option value="Semi-dry">Semi-dry</option>
-            <option value="Wet">Wet</option>
-          </select>
-          {formErrors.moistureLevel && (
-            <p className="text-red-500 text-sm mb-4">{formErrors.moistureLevel}</p>
-          )}
-          {/* 🔹 Entity Name Input */}
-          <input
-            type="text"
-            placeholder="Entity Name"
-            value={entityName}
-            onChange={(e) => setEntityName(e.target.value)}
-            className="border p-3 shadow-md bg-white dark:text-black
-             dark:border-gray-700 border-gray-300 rounded-lg w-full 
-             focus:ring-2 focus:ring-green-900 transition
-              transform hover:scale-105 duration-300 mb-3"
-          />
-          {formErrors.entityName && (
-            <p className="text-red-500 text-sm mb-4">{formErrors.entityName}</p>
-          )}
-          {/* 🔹 Amount Input */}
-          <input
-            type="text"
-            placeholder="Amount (kg, gm)"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="border p-3 shadow-md bg-white dark:text-black
-             dark:border-gray-700 border-gray-300 rounded-lg w-full 
-             focus:ring-2 focus:ring-green-900 transition
-              transform hover:scale-105 duration-300 mb-3"
-          />
-          {formErrors.amount && (
-            <p className="text-red-500 text-sm mb-4">{formErrors.amount}</p>
-          )}
-          {/* 🔹 Price per kg Input */}
-          <input
-            type="text"
-            placeholder="Price per kg"
-            value={pricePerAmount}
-            onChange={(e) => setPricePerAmount(e.target.value)}
-            className="border p-3 shadow-md bg-white dark:text-black dark:border-gray-700 border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 transition transform hover:scale-105 duration-300 mb-3"
-          />
-          {formErrors.pricePerAmount && (
-            <p className="text-red-500 text-sm mb-4">
-              {formErrors.pricePerAmount}
-            </p>
-          )}
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Available Quantity (in kg)</label>
+              <input
+                type="text"
+                placeholder="Amount (e.g. 50)"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
+              />
+              {formErrors.amount && (
+                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.amount}</p>
+              )}
 
-          {/* 🔹 Pricing Negotiable Checkbox */}
-          <div className="flex items-center gap-2 mb-3 bg-slate-50 dark:bg-slate-900/30 p-2.5 rounded-lg border border-slate-200/60">
-            <input
-              type="checkbox"
-              id="isNegotiable"
-              checked={isNegotiable}
-              onChange={(e) => setIsNegotiable(e.target.checked)}
-              className="h-4.5 w-4.5 accent-green-800 rounded border-gray-300 focus:ring-green-900 cursor-pointer"
-            />
-            <label htmlFor="isNegotiable" className="text-sm text-slate-700 dark:text-slate-300 font-medium cursor-pointer select-none">
-              Is this price negotiable? (Toggle for bidding/negotiation)
-            </label>
-          </div>
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Price per kg</label>
+              <input
+                type="text"
+                placeholder="Price in INR"
+                value={pricePerAmount}
+                onChange={(e) => setPricePerAmount(e.target.value)}
+                className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
+              />
+              {formErrors.pricePerAmount && (
+                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.pricePerAmount}</p>
+              )}
 
-          {/* 🔹 Current Location Input */}
-          <div className="flex flex-row items-center mb-4">
-            <input
-              type="text"
-              placeholder="Current Location"
-              value={location}
-              readOnly
-              className="border p-3 shadow-md bg-white dark:text-black dark:border-gray-700 border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 transition transform hover:scale-105 duration-300 mb-3"
-            />
-            <button
-              onClick={getlocation}
-              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-500 font-semibold ml-2 h-12"
-              disabled={isLoading}
-            >
-              {isLoading ? "Fetching..." : "Get Location"}
-            </button>
-          </div>
-          {formErrors.location && (
-            <p className="text-red-500 text-sm mb-4">{formErrors.location}</p>
-          )}
-
-          {/* 🔹 Delivery Days Input */}
-          <input
-            type="text"
-            placeholder="Number of days for delivery"
-            value={deliveryDays}
-            onChange={(e) => setDeliveryDays(e.target.value)}
-            className="border p-3 shadow-md bg-white dark:text-black dark:border-gray-700 border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 transition transform hover:scale-105 duration-300 mb-3"
-          />
-          {formErrors.deliveryDays && (
-            <p className="text-red-500 text-sm mb-4">
-              {formErrors.deliveryDays}
-            </p>
-          )}
-
-          {/* 🔹 Logistics Section */}
-          <h3 className="text-lg font-bold text-green-900 mt-4 mb-3 border-b pb-1 dark:text-emerald-400">Logistics & Packaging</h3>
-
-          {/* 🔹 Pickup Availability Dropdown */}
-          <select
-            value={pickupAvailability}
-            onChange={(e) => setPickupAvailability(e.target.value)}
-            className="border p-3 shadow-md bg-white dark:text-black dark:border-gray-700 border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 transition transform hover:scale-105 duration-300 mb-3"
-          >
-            <option value="">Select Pickup Availability</option>
-            <option value="Seller delivers">Seller delivers</option>
-            <option value="Buyer must pick up">Buyer must pick up</option>
-            <option value="Either">Either</option>
-          </select>
-          {formErrors.pickupAvailability && (
-            <p className="text-red-500 text-sm mb-4">{formErrors.pickupAvailability}</p>
-          )}
-
-          {/* 🔹 Minimum Order Quantity (MOQ) */}
-          <input
-            type="text"
-            placeholder="Minimum Order Quantity (in kg)"
-            value={minOrderQuantity}
-            onChange={(e) => setMinOrderQuantity(e.target.value)}
-            className="border p-3 shadow-md bg-white dark:text-black dark:border-gray-700 border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 transition transform hover:scale-105 duration-300 mb-3"
-          />
-          {formErrors.minOrderQuantity && (
-            <p className="text-red-500 text-sm mb-4">{formErrors.minOrderQuantity}</p>
-          )}
-
-          {/* 🔹 Packaging Type Dropdown */}
-          <select
-            value={packagingType}
-            onChange={(e) => setPackagingType(e.target.value)}
-            className="border p-3 shadow-md bg-white dark:text-black dark:border-gray-700 border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 transition transform hover:scale-105 duration-300 mb-3"
-          >
-            <option value="">Select Packaging Type</option>
-            <option value="loose">loose</option>
-            <option value="sacks">sacks</option>
-            <option value="bales">bales</option>
-          </select>
-          {formErrors.packagingType && (
-            <p className="text-red-500 text-sm mb-4">{formErrors.packagingType}</p>
-          )}
-
-          {/* 🔹 Seller Trust Section */}
-          <h3 className="text-lg font-bold text-green-900 mt-4 mb-3 border-b pb-1 dark:text-emerald-400">Seller Profile & Contact</h3>
-
-          {/* 🔹 Seller Profile Type Dropdown */}
-          <select
-            value={sellerType}
-            onChange={(e) => setSellerType(e.target.value)}
-            className="border p-3 shadow-md bg-white dark:text-black dark:border-gray-700 border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 transition transform hover:scale-105 duration-300 mb-3"
-          >
-            <option value="">Select Seller Profile Type</option>
-            <option value="Individual farmer">Individual farmer</option>
-            <option value="Vendor">Vendor</option>
-            <option value="Business">Business</option>
-          </select>
-          {formErrors.sellerType && (
-            <p className="text-red-500 text-sm mb-4">{formErrors.sellerType}</p>
-          )}
-
-          {/* 🔹 Contact Number Input */}
-          <input
-            type="text"
-            placeholder="Contact Number (10 digits)"
-            value={contactNumber}
-            onChange={(e) => setContactNumber(e.target.value)}
-            className="border p-3 shadow-md bg-white dark:text-black dark:border-gray-700 border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 transition transform hover:scale-105 duration-300 mb-3"
-          />
-          {formErrors.contactNumber && (
-            <p className="text-red-500 text-sm mb-4">{formErrors.contactNumber}</p>
-          )}
-
-          {/* 🔹 Aadhar Card Number Input */}
-          <input
-            type="text"
-            placeholder="Aadhar Card Number"
-            value={aadharNumber}
-            onChange={(e) => setAadharNumber(e.target.value)}
-            className="border p-3 shadow-md bg-white dark:text-black dark:border-gray-700 border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 transition transform hover:scale-105 duration-300 mb-3"
-          />
-          {formErrors.aadharNumber && (
-            <p className="text-red-500 text-sm mb-4">
-              {formErrors.aadharNumber}
-            </p>
-          )}
-          {/* 🔹 Contamination Self-Declaration Checkbox */}
-          <div className="flex items-center gap-2 mb-4 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100 dark:bg-slate-900/50 dark:border-gray-800">
-            <input
-              type="checkbox"
-              id="contaminationFree"
-              checked={isContaminationFree}
-              onChange={(e) => setIsContaminationFree(e.target.checked)}
-              className="h-5 w-5 accent-green-800 rounded border-gray-300 focus:ring-green-900 cursor-pointer"
-            />
-            <label htmlFor="contaminationFree" className="text-sm text-slate-700 dark:text-slate-300 font-medium cursor-pointer select-none">
-              Self-Declaration: This batch is free from plastic, synthetic materials, or other contaminants.
-            </label>
-          </div>
-          {/* 🔹 Image Upload Input */}
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={handleImageUpload}
-            className="border p-3 shadow-md bg-white dark:text-black
-             dark:border-gray-700 border-gray-300 rounded-lg w-full 
-             focus:ring-2 focus:ring-green-900 transition
-              transform hover:scale-105 duration-300 mb-3"
-            disabled={!category}
-          />
-          {formErrors.images && (
-            <p className="text-red-500 text-sm mb-4">{formErrors.images}</p>
-          )}
-          {/* 🔹 Image Preview */}
-          {images.length > 0 && (
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
-              {images.map((src, index) => (
-                <div key={index} className="relative">
-                  <img
-                    src={src}
-                    alt={`Leaf ${index + 1}`}
-                    className="w-full h-32 object-cover rounded-md shadow"
-                  />
-                  <button
-                    onClick={() => handleDeleteImage(index)}
-                    className="absolute top-1 right-1 bg-red-500 text-white rounded-full px-2"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
+              <div className="flex items-center gap-2 mt-1 mb-3 bg-slate-50 dark:bg-slate-900/35 p-2 rounded-lg border border-slate-200/50">
+                <input
+                  type="checkbox"
+                  id="isNegotiable"
+                  checked={isNegotiable}
+                  onChange={(e) => setIsNegotiable(e.target.checked)}
+                  className="h-4.5 w-4.5 accent-green-800 rounded border-gray-300 focus:ring-green-900 cursor-pointer"
+                />
+                <label htmlFor="isNegotiable" className="text-xs text-slate-600 dark:text-slate-300 font-semibold cursor-pointer select-none">
+                  Price is negotiable (open to bids)
+                </label>
+              </div>
             </div>
-          )}
-          {/* 🔹 Submit Button */}
+
+            {/* 🔹 COLUMN 2: Logistics & Location */}
+            <div className="flex flex-col gap-1 text-left">
+              <h3 className="text-lg font-bold text-green-800 mb-3 pb-1 border-b border-emerald-50">2. Logistics & Location</h3>
+              
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Sellers Location</label>
+              <div className="flex gap-2 mb-3">
+                <input
+                  type="text"
+                  placeholder="Coordinates"
+                  value={location}
+                  readOnly
+                  className="border p-3 shadow-sm bg-slate-50 dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900"
+                />
+                <button
+                  onClick={getlocation}
+                  className="bg-green-700 text-white px-3 py-2 rounded-lg hover:bg-green-600 font-semibold text-xs transition duration-200 h-12"
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Fetching..." : "Fetch"}
+                </button>
+              </div>
+              {formErrors.location && (
+                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.location}</p>
+              )}
+
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Full Physical Address</label>
+              <textarea
+                placeholder="Enter complete address (State, District, PIN)"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                rows={2}
+                className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3 resize-none"
+              />
+              {formErrors.address && (
+                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.address}</p>
+              )}
+
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Delivery Lead Time</label>
+              <input
+                type="text"
+                placeholder="Number of days (e.g. 5)"
+                value={deliveryDays}
+                onChange={(e) => setDeliveryDays(e.target.value)}
+                className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
+              />
+              {formErrors.deliveryDays && (
+                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.deliveryDays}</p>
+              )}
+
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Pickup Availability</label>
+              <select
+                value={pickupAvailability}
+                onChange={(e) => setPickupAvailability(e.target.value)}
+                className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
+              >
+                <option value="">Select Option</option>
+                <option value="Seller delivers">Seller delivers</option>
+                <option value="Buyer must pick up">Buyer must pick up</option>
+                <option value="Either">Either</option>
+              </select>
+              {formErrors.pickupAvailability && (
+                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.pickupAvailability}</p>
+              )}
+
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Minimum Order Qty (MOQ in kg)</label>
+              <input
+                type="text"
+                placeholder="Min kg required for purchase"
+                value={minOrderQuantity}
+                onChange={(e) => setMinOrderQuantity(e.target.value)}
+                className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
+              />
+              {formErrors.minOrderQuantity && (
+                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.minOrderQuantity}</p>
+              )}
+
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Packaging Format</label>
+              <select
+                value={packagingType}
+                onChange={(e) => setPackagingType(e.target.value)}
+                className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
+              >
+                <option value="">Select Packaging Type</option>
+                <option value="loose">loose</option>
+                <option value="sacks">sacks</option>
+                <option value="bales">bales</option>
+              </select>
+              {formErrors.packagingType && (
+                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.packagingType}</p>
+              )}
+            </div>
+
+            {/* 🔹 COLUMN 3: Seller Profile & Security */}
+            <div className="flex flex-col gap-1 text-left">
+              <h3 className="text-lg font-bold text-green-800 mb-3 pb-1 border-b border-emerald-50">3. Seller & Verification</h3>
+              
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Seller Type</label>
+              <select
+                value={sellerType}
+                onChange={(e) => setSellerType(e.target.value)}
+                className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
+              >
+                <option value="">Select Seller Type</option>
+                <option value="Individual farmer">Individual farmer</option>
+                <option value="Vendor">Vendor</option>
+                <option value="Business">Business</option>
+              </select>
+              {formErrors.sellerType && (
+                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.sellerType}</p>
+              )}
+
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Direct Contact Number</label>
+              <input
+                type="text"
+                placeholder="10-digit Mobile Number"
+                value={contactNumber}
+                onChange={(e) => setContactNumber(e.target.value)}
+                className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
+              />
+              {formErrors.contactNumber && (
+                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.contactNumber}</p>
+              )}
+
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Aadhar Card Number</label>
+              <input
+                type="text"
+                placeholder="12-digit Number"
+                value={aadharNumber}
+                onChange={(e) => setAadharNumber(e.target.value)}
+                className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
+              />
+              {formErrors.aadharNumber && (
+                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.aadharNumber}</p>
+              )}
+
+              <div className="flex items-start gap-2 mt-1 mb-3 bg-emerald-50/50 p-2.5 rounded-lg border border-emerald-100 dark:bg-slate-900/30 dark:border-gray-800">
+                <input
+                  type="checkbox"
+                  id="contaminationFree"
+                  checked={isContaminationFree}
+                  onChange={(e) => setIsContaminationFree(e.target.checked)}
+                  className="h-4.5 w-4.5 accent-green-800 rounded border-gray-300 focus:ring-green-900 cursor-pointer mt-0.5"
+                />
+                <label htmlFor="contaminationFree" className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold cursor-pointer select-none leading-tight">
+                  Declarative: Batch is clean and contains no plastic/synthetic contamination.
+                </label>
+              </div>
+
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Showcase Pictures (max 5)</label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageUpload}
+                className="border p-2.5 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3 text-xs"
+                disabled={!category}
+              />
+              {formErrors.images && (
+                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.images}</p>
+              )}
+
+              {/* Showcase Image Previews */}
+              {images.length > 0 && (
+                <div className="grid grid-cols-3 gap-2 mt-2">
+                  {images.map((src, index) => (
+                    <div key={index} className="relative aspect-square rounded-md overflow-hidden border border-slate-200">
+                      <img
+                        src={src}
+                        alt={`Preview ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                      <button
+                        onClick={() => handleDeleteImage(index)}
+                        className="absolute top-0.5 right-0.5 bg-red-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-[10px] shadow font-bold hover:bg-red-500 animate-fade-in"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* 🔹 SUBMIT ACTION */}
           <button
             onClick={handleSubmit}
-            className="w-full mt-4 bg-green-600 text-white py-2 rounded-lg hover:bg-green-500"
+            className="w-full mt-8 bg-green-700 hover:bg-green-600 text-white font-bold py-3.5 rounded-xl shadow-lg hover:shadow-green-900/10 transition-all duration-200 text-lg tracking-wide animate-pulse-slow"
           >
-            Submit
+            Submit Batch Entry
           </button>
         </div>
       </div>
