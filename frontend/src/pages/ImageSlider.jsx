@@ -23,7 +23,7 @@ export default function ImageSlider() {
   }, []);
 
   return (
-    <div className="relative w-full h-[400px] md:h-[480px] lg:h-[520px] rounded-2xl overflow-hidden shadow-2xl border-4 border-white/60 glass-card">
+    <div className="relative w-full h-[400px] md:h-[480px] lg:h-[520px] rounded-2xl overflow-hidden shadow-2xl border-4 border-white/60 bg-emerald-50/10">
       <AnimatePresence mode="wait">
         <motion.div
           key={index}
@@ -46,14 +46,14 @@ export default function ImageSlider() {
       {/* Modern gradient overlay on slide for premium appearance */}
       <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
 
-      {/* Active Dot Indicators */}
-      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex flex-row gap-2 z-10 bg-black/30 backdrop-blur-md px-3 py-1.5 rounded-full">
+      {/* Active Dot Indicators (Fully transparent wrapper, clear floating dots) */}
+      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex flex-row gap-2.5 z-10">
         {images.map((_, i) => (
           <button
             key={i}
             onClick={() => setIndex(i)}
-            className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-              i === index ? "bg-emerald-400 w-6" : "bg-white/60 hover:bg-white"
+            className={`w-2.5 h-2.5 rounded-full transition-all duration-300 shadow-md ${
+              i === index ? "bg-emerald-500 w-6" : "bg-white/80 hover:bg-white"
             }`}
             aria-label={`Go to slide ${i + 1}`}
           />
