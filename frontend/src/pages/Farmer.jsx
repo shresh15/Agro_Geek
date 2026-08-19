@@ -4,7 +4,8 @@ import axios from "axios";
 import imageone from "/src/assets/bg.jpg";
 import Navbar from "./Navbar";
 import "/src/pages/details.css";
-const BACKEND_URL = import.meta.env.VITE_ENV_BACKEND_URL || "http://localhost:8000";
+const BACKEND_URL =
+  import.meta.env.VITE_ENV_BACKEND_URL || "http://localhost:8000";
 
 const Farmer = () => {
   const [images, setImages] = useState([]);
@@ -34,27 +35,23 @@ const Farmer = () => {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [historyListings, setHistoryListings] = useState([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [tempEmail, setTempEmail] = useState("");
-  const [userEmail, setUserEmail] = useState("");
+  const [showBuyersModal, setShowBuyersModal] = useState(false);
+  const [buyersList, setBuyersList] = useState([]);
+  const [isLoadingBuyers, setIsLoadingBuyers] = useState(false);
   const navigate = useNavigate();
+  const userEmail = localStorage.getItem("userEmail") || "";
 
   useEffect(() => {
-    const storedProfileImage = localStorage.getItem("profileImage");
-    if (storedProfileImage) {
-      setProfilePicture(storedProfileImage);
-    }
-
     const fetchUserProfile = async () => {
-      const token = localStorage.getItem("authToken");
-      if (!token) return;
       try {
         const response = await axios.get(`${BACKEND_URL}/api/auth/me`, {
-          headers: { Authorization: `Bearer ${token}` }
+          withCredentials: true,
         });
         if (response.data?.success && response.data?.user) {
-          setUserEmail(response.data.user.email);
-          if (response.data.user.phone) setContactNumber(response.data.user.phone);
-          if (response.data.user.address) setAddress(response.data.user.address);
+          if (response.data.user.phone)
+            setContactNumber(response.data.user.phone);
+          if (response.data.user.address)
+            setAddress(response.data.user.address);
         }
       } catch (error) {
         console.error("❌ Error fetching user profile from MongoDB:", error);
@@ -66,17 +63,13 @@ const Farmer = () => {
 
   // ✅ Fetch history submissions for the logged in seller
   const handleOpenHistory = async () => {
-    const emailToQuery = userEmail || localStorage.getItem("userEmail");
     setShowHistoryModal(true);
-    if (!emailToQuery) {
-      setHistoryListings([]);
-      return;
-    }
 
     setIsLoadingHistory(true);
     try {
       const response = await axios.get(
-        `${BACKEND_URL}/api/farmer/my-submissions?email=${emailToQuery}`
+        `${BACKEND_URL}/api/farmer/my-submissions`,
+        { withCredentials: true },
       );
       setHistoryListings(response.data.data || []);
     } catch (error) {
@@ -87,35 +80,58 @@ const Farmer = () => {
     }
   };
 
-  // ✅ Fetch history submissions when email is manually submitted
-  const handleFetchHistoryWithEmail = async () => {
-    if (!tempEmail || !tempEmail.includes("@")) {
-      alert("⚠️ Please enter a valid email address.");
+  // ✅ Fetch potential buyers matching the seller's active email
+  const handleOpenPotentialBuyers = async () => {
+    setShowBuyersModal(true);
+    setIsLoadingBuyers(true);
+
+    const emailToQuery = userEmail || localStorage.getItem("userEmail") || "";
+    if (!emailToQuery) {
+      setBuyersList([]);
+      setIsLoadingBuyers(false);
       return;
     }
 
-    setIsLoadingHistory(true);
     try {
       const response = await axios.get(
-        `${BACKEND_URL}/api/farmer/my-submissions?email=${tempEmail}`
+        `${BACKEND_URL}/api/farmer/my-submissions?email=${emailToQuery}`,
+        { withCredentials: true },
       );
-      setHistoryListings(response.data.data || []);
-      setUserEmail(tempEmail);
-      localStorage.setItem("userEmail", tempEmail);
+      const myItems = response.data.data || [];
+
+      // Extract all company interest list records and map to target products
+      const collectedInterests = [];
+      myItems.forEach((item) => {
+        if (item.companyInterests && item.companyInterests.length > 0) {
+          item.companyInterests.forEach((interest) => {
+            collectedInterests.push({
+              ...interest,
+              itemName: item.entityName,
+              itemCategory: item.category,
+              itemQuantity: item.amount,
+              itemPrice: item.pricePerAmount,
+            });
+          });
+        }
+      });
+
+      // Sort by notified date (descending)
+      collectedInterests.sort(
+        (a, b) => new Date(b.notifiedAt) - new Date(a.notifiedAt),
+      );
+      setBuyersList(collectedInterests);
     } catch (error) {
-      console.error("❌ Error fetching history listings:", error);
-      alert("❌ Failed to fetch your listing history.");
+      console.error("❌ Error fetching potential buyers:", error);
     } finally {
-      setIsLoadingHistory(false);
+      setIsLoadingBuyers(false);
     }
   };
 
   // ✅ Handle Logout
   const handleLogout = () => {
-    localStorage.removeItem("profileImage");
-    localStorage.removeItem("authToken");
-    alert("✅ Logout Successfully!");
-    navigate("/");
+    axios
+      .post(`${BACKEND_URL}/api/auth/logout`, {}, { withCredentials: true })
+      .finally(() => navigate("/"));
   };
 
   // ✅ Handle Image Upload & Preview
@@ -161,7 +177,7 @@ const Farmer = () => {
         setLocationError("Unable to retrieve your location.");
         console.error("❌ Geolocation error:", error);
         setIsLoading(false);
-      }
+      },
     );
   };
 
@@ -171,12 +187,20 @@ const Farmer = () => {
     if (!category) errors.category = "Please select a category.";
     if (category === "medicinal_plants" && !subType)
       errors.subType = "Please specify the plant name.";
-    if (!moistureLevel) errors.moistureLevel = "Please select a moisture level.";
-    if (!pickupAvailability) errors.pickupAvailability = "Please select pickup availability.";
-    if (!minOrderQuantity || isNaN(minOrderQuantity) || Number(minOrderQuantity) < 0)
+    if (!moistureLevel)
+      errors.moistureLevel = "Please select a moisture level.";
+    if (!pickupAvailability)
+      errors.pickupAvailability = "Please select pickup availability.";
+    if (
+      !minOrderQuantity ||
+      isNaN(minOrderQuantity) ||
+      Number(minOrderQuantity) < 0
+    )
       errors.minOrderQuantity = "Please enter a valid minimum order quantity.";
-    if (!packagingType) errors.packagingType = "Please select a packaging type.";
-    if (!sellerType) errors.sellerType = "Please select your seller profile type.";
+    if (!packagingType)
+      errors.packagingType = "Please select a packaging type.";
+    if (!sellerType)
+      errors.sellerType = "Please select your seller profile type.";
     if (!contactNumber || !/^\d{10}$/.test(contactNumber))
       errors.contactNumber = "Please enter a valid 10-digit contact number.";
     if (!address) errors.address = "Please enter your full address.";
@@ -218,7 +242,6 @@ const Farmer = () => {
     formData.append("sellerType", sellerType);
     formData.append("contactNumber", contactNumber);
     formData.append("address", address);
-    formData.append("sellerEmail", localStorage.getItem("userEmail") || "");
     if (category === "medicinal_plants") {
       formData.append("subType", subType);
     }
@@ -234,7 +257,8 @@ const Farmer = () => {
         formData,
         {
           headers: { "Content-Type": "multipart/form-data" },
-        }
+          withCredentials: true,
+        },
       );
 
       alert("✅ Data submitted successfully!");
@@ -282,20 +306,26 @@ const Farmer = () => {
         setShowDropdown={setShowDropdown}
         handleLogout={handleLogout}
         onMyListingsClick={handleOpenHistory}
+        onPotentialBuyersClick={handleOpenPotentialBuyers}
       />
 
       {/* 🔹 Scrollable Content Container */}
       <div className="pt-4 pb-8">
         <div className="max-w-6xl mx-auto bg-white p-8 mt-6 shadow-xl rounded-2xl border border-slate-100">
-          <h2 className="text-3xl font-extrabold text-green-955 mb-6 pb-2 border-b text-center md:text-left dark:text-green-900">Upload Your Agricultural Batches</h2>
-          
+          <h2 className="text-3xl font-extrabold text-green-955 mb-6 pb-2 border-b text-center md:text-left dark:text-green-900">
+            Upload Your Agricultural Batches
+          </h2>
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
             {/* 🔹 COLUMN 1: Material Details */}
             <div className="flex flex-col gap-1 text-left">
-              <h3 className="text-lg font-bold text-green-800 mb-3 pb-1 border-b border-emerald-50">1. Material Details</h3>
-              
-              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Category</label>
+              <h3 className="text-lg font-bold text-green-800 mb-3 pb-1 border-b border-emerald-50">
+                1. Material Details
+              </h3>
+
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                Category
+              </label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
@@ -304,15 +334,21 @@ const Farmer = () => {
                 <option value="">Select a category</option>
                 <option value="fallen_leaves">Fallen Leaves</option>
                 <option value="wood">Wood</option>
-                <option value="medicinal_plants">Medicinal Plants (Ayurvedic)</option>
+                <option value="medicinal_plants">
+                  Medicinal Plants (Ayurvedic)
+                </option>
               </select>
               {formErrors.category && (
-                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.category}</p>
+                <p className="text-red-500 text-xs mb-3 font-semibold">
+                  {formErrors.category}
+                </p>
               )}
 
               {category === "medicinal_plants" && (
                 <>
-                  <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Botanical/Plant Name</label>
+                  <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                    Botanical/Plant Name
+                  </label>
                   <input
                     type="text"
                     placeholder="e.g. Neem, Tulsi, Ashwagandha"
@@ -321,12 +357,16 @@ const Farmer = () => {
                     className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
                   />
                   {formErrors.subType && (
-                    <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.subType}</p>
+                    <p className="text-red-500 text-xs mb-3 font-semibold">
+                      {formErrors.subType}
+                    </p>
                   )}
                 </>
               )}
 
-              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Moisture Level</label>
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                Moisture Level
+              </label>
               <select
                 value={moistureLevel}
                 onChange={(e) => setMoistureLevel(e.target.value)}
@@ -338,10 +378,14 @@ const Farmer = () => {
                 <option value="Wet">Wet</option>
               </select>
               {formErrors.moistureLevel && (
-                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.moistureLevel}</p>
+                <p className="text-red-500 text-xs mb-3 font-semibold">
+                  {formErrors.moistureLevel}
+                </p>
               )}
 
-              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Batch Title (Entity Name)</label>
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                Batch Title (Entity Name)
+              </label>
               <input
                 type="text"
                 placeholder="e.g. Dried Tulsi Leaves Batch A"
@@ -350,10 +394,14 @@ const Farmer = () => {
                 className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
               />
               {formErrors.entityName && (
-                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.entityName}</p>
+                <p className="text-red-500 text-xs mb-3 font-semibold">
+                  {formErrors.entityName}
+                </p>
               )}
 
-              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Available Quantity (in kg)</label>
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                Available Quantity (in kg)
+              </label>
               <input
                 type="text"
                 placeholder="Amount (e.g. 50)"
@@ -362,10 +410,14 @@ const Farmer = () => {
                 className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
               />
               {formErrors.amount && (
-                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.amount}</p>
+                <p className="text-red-500 text-xs mb-3 font-semibold">
+                  {formErrors.amount}
+                </p>
               )}
 
-              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Price per kg</label>
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                Price per kg
+              </label>
               <input
                 type="text"
                 placeholder="Price in INR"
@@ -374,7 +426,9 @@ const Farmer = () => {
                 className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
               />
               {formErrors.pricePerAmount && (
-                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.pricePerAmount}</p>
+                <p className="text-red-500 text-xs mb-3 font-semibold">
+                  {formErrors.pricePerAmount}
+                </p>
               )}
 
               <div className="flex items-center gap-2 mt-1 mb-3 bg-slate-50 dark:bg-slate-900/35 p-2 rounded-lg border border-slate-200/50">
@@ -385,7 +439,10 @@ const Farmer = () => {
                   onChange={(e) => setIsNegotiable(e.target.checked)}
                   className="h-4.5 w-4.5 accent-green-800 rounded border-gray-300 focus:ring-green-900 cursor-pointer"
                 />
-                <label htmlFor="isNegotiable" className="text-xs text-slate-600 dark:text-slate-300 font-semibold cursor-pointer select-none">
+                <label
+                  htmlFor="isNegotiable"
+                  className="text-xs text-slate-600 dark:text-slate-300 font-semibold cursor-pointer select-none"
+                >
                   Price is negotiable (open to bids)
                 </label>
               </div>
@@ -393,9 +450,13 @@ const Farmer = () => {
 
             {/* 🔹 COLUMN 2: Logistics & Location */}
             <div className="flex flex-col gap-1 text-left">
-              <h3 className="text-lg font-bold text-green-800 mb-3 pb-1 border-b border-emerald-50">2. Logistics & Location</h3>
-              
-              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Sellers Location</label>
+              <h3 className="text-lg font-bold text-green-800 mb-3 pb-1 border-b border-emerald-50">
+                2. Logistics & Location
+              </h3>
+
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                Sellers Location
+              </label>
               <div className="flex gap-2 mb-3">
                 <input
                   type="text"
@@ -413,10 +474,14 @@ const Farmer = () => {
                 </button>
               </div>
               {formErrors.location && (
-                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.location}</p>
+                <p className="text-red-500 text-xs mb-3 font-semibold">
+                  {formErrors.location}
+                </p>
               )}
 
-              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Full Physical Address</label>
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                Full Physical Address
+              </label>
               <textarea
                 placeholder="Enter complete address (State, District, PIN)"
                 value={address}
@@ -425,10 +490,14 @@ const Farmer = () => {
                 className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3 resize-none"
               />
               {formErrors.address && (
-                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.address}</p>
+                <p className="text-red-500 text-xs mb-3 font-semibold">
+                  {formErrors.address}
+                </p>
               )}
 
-              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Delivery Lead Time</label>
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                Delivery Lead Time
+              </label>
               <input
                 type="text"
                 placeholder="Number of days (e.g. 5)"
@@ -437,10 +506,14 @@ const Farmer = () => {
                 className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
               />
               {formErrors.deliveryDays && (
-                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.deliveryDays}</p>
+                <p className="text-red-500 text-xs mb-3 font-semibold">
+                  {formErrors.deliveryDays}
+                </p>
               )}
 
-              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Pickup Availability</label>
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                Pickup Availability
+              </label>
               <select
                 value={pickupAvailability}
                 onChange={(e) => setPickupAvailability(e.target.value)}
@@ -452,10 +525,14 @@ const Farmer = () => {
                 <option value="Either">Either</option>
               </select>
               {formErrors.pickupAvailability && (
-                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.pickupAvailability}</p>
+                <p className="text-red-500 text-xs mb-3 font-semibold">
+                  {formErrors.pickupAvailability}
+                </p>
               )}
 
-              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Minimum Order Qty (MOQ in kg)</label>
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                Minimum Order Qty (MOQ in kg)
+              </label>
               <input
                 type="text"
                 placeholder="Min kg required for purchase"
@@ -464,10 +541,14 @@ const Farmer = () => {
                 className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
               />
               {formErrors.minOrderQuantity && (
-                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.minOrderQuantity}</p>
+                <p className="text-red-500 text-xs mb-3 font-semibold">
+                  {formErrors.minOrderQuantity}
+                </p>
               )}
 
-              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Packaging Format</label>
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                Packaging Format
+              </label>
               <select
                 value={packagingType}
                 onChange={(e) => setPackagingType(e.target.value)}
@@ -479,15 +560,21 @@ const Farmer = () => {
                 <option value="bales">bales</option>
               </select>
               {formErrors.packagingType && (
-                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.packagingType}</p>
+                <p className="text-red-500 text-xs mb-3 font-semibold">
+                  {formErrors.packagingType}
+                </p>
               )}
             </div>
 
             {/* 🔹 COLUMN 3: Seller Profile & Security */}
             <div className="flex flex-col gap-1 text-left">
-              <h3 className="text-lg font-bold text-green-800 mb-3 pb-1 border-b border-emerald-50">3. Seller & Verification</h3>
-              
-              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Seller Type</label>
+              <h3 className="text-lg font-bold text-green-800 mb-3 pb-1 border-b border-emerald-50">
+                3. Seller & Verification
+              </h3>
+
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                Seller Type
+              </label>
               <select
                 value={sellerType}
                 onChange={(e) => setSellerType(e.target.value)}
@@ -499,10 +586,14 @@ const Farmer = () => {
                 <option value="Business">Business</option>
               </select>
               {formErrors.sellerType && (
-                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.sellerType}</p>
+                <p className="text-red-500 text-xs mb-3 font-semibold">
+                  {formErrors.sellerType}
+                </p>
               )}
 
-              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Direct Contact Number</label>
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                Direct Contact Number
+              </label>
               <input
                 type="text"
                 placeholder="10-digit Mobile Number"
@@ -511,10 +602,14 @@ const Farmer = () => {
                 className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
               />
               {formErrors.contactNumber && (
-                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.contactNumber}</p>
+                <p className="text-red-500 text-xs mb-3 font-semibold">
+                  {formErrors.contactNumber}
+                </p>
               )}
 
-              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Aadhar Card Number</label>
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                Aadhar Card Number
+              </label>
               <input
                 type="text"
                 placeholder="12-digit Number"
@@ -523,7 +618,9 @@ const Farmer = () => {
                 className="border p-3 shadow-sm bg-white dark:text-black dark:border-gray-300 rounded-lg w-full focus:ring-2 focus:ring-green-900 mb-3"
               />
               {formErrors.aadharNumber && (
-                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.aadharNumber}</p>
+                <p className="text-red-500 text-xs mb-3 font-semibold">
+                  {formErrors.aadharNumber}
+                </p>
               )}
 
               <div className="flex items-start gap-2 mt-1 mb-3 bg-emerald-50/50 p-2.5 rounded-lg border border-emerald-100 dark:bg-slate-900/30 dark:border-gray-800">
@@ -534,12 +631,18 @@ const Farmer = () => {
                   onChange={(e) => setIsContaminationFree(e.target.checked)}
                   className="h-4.5 w-4.5 accent-green-800 rounded border-gray-300 focus:ring-green-900 cursor-pointer mt-0.5"
                 />
-                <label htmlFor="contaminationFree" className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold cursor-pointer select-none leading-tight">
-                  Declarative: Batch is clean and contains no plastic/synthetic contamination.
+                <label
+                  htmlFor="contaminationFree"
+                  className="text-[11px] text-slate-600 dark:text-slate-300 font-semibold cursor-pointer select-none leading-tight"
+                >
+                  Declarative: Batch is clean and contains no plastic/synthetic
+                  contamination.
                 </label>
               </div>
 
-              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">Showcase Pictures (max 5)</label>
+              <label className="text-xs font-bold text-slate-500 mb-1 uppercase tracking-wider">
+                Showcase Pictures (max 5)
+              </label>
               <input
                 type="file"
                 accept="image/*"
@@ -549,14 +652,19 @@ const Farmer = () => {
                 disabled={!category}
               />
               {formErrors.images && (
-                <p className="text-red-500 text-xs mb-3 font-semibold">{formErrors.images}</p>
+                <p className="text-red-500 text-xs mb-3 font-semibold">
+                  {formErrors.images}
+                </p>
               )}
 
               {/* Showcase Image Previews */}
               {images.length > 0 && (
                 <div className="grid grid-cols-3 gap-2 mt-2">
                   {images.map((src, index) => (
-                    <div key={index} className="relative aspect-square rounded-md overflow-hidden border border-slate-200">
+                    <div
+                      key={index}
+                      className="relative aspect-square rounded-md overflow-hidden border border-slate-200"
+                    >
                       <img
                         src={src}
                         alt={`Preview ${index + 1}`}
@@ -592,8 +700,12 @@ const Farmer = () => {
             {/* Modal Header */}
             <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
               <div className="text-left">
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Your Listed Batches</h3>
-                <p className="text-xs text-slate-500">History of entries submitted from your account</p>
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                  Your Listed Batches
+                </h3>
+                <p className="text-xs text-slate-500">
+                  History of entries submitted from your account
+                </p>
               </div>
               <button
                 onClick={() => setShowHistoryModal(false)}
@@ -605,42 +717,30 @@ const Farmer = () => {
 
             {/* Modal Scrollable Body */}
             <div className="flex-1 overflow-y-auto p-6">
-              {!(userEmail || localStorage.getItem("userEmail")) ? (
-                <div className="flex flex-col items-center justify-center py-8 px-4 text-center max-w-md mx-auto">
-                  <span className="text-4xl mb-3">🔑</span>
-                  <h4 className="font-bold text-slate-800 dark:text-white mb-1">Verify Email to load history</h4>
-                  <p className="text-xs text-slate-500 mb-4">We couldn't detect your email in this browser session. Enter it below to fetch your listed items.</p>
-                  <div className="flex gap-2 w-full">
-                    <input
-                      type="email"
-                      placeholder="your-email@example.com"
-                      value={tempEmail}
-                      onChange={(e) => setTempEmail(e.target.value)}
-                      className="border p-2.5 rounded-lg shadow-sm text-sm w-full focus:ring-2 focus:ring-green-900 text-black border-gray-300"
-                    />
-                    <button
-                      onClick={handleFetchHistoryWithEmail}
-                      className="bg-green-700 hover:bg-green-600 text-white font-semibold text-sm px-4 py-2 rounded-lg transition duration-200"
-                    >
-                      Load
-                    </button>
-                  </div>
-                </div>
-              ) : isLoadingHistory ? (
+              {isLoadingHistory ? (
                 <div className="flex flex-col items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-800 mb-3"></div>
-                  <p className="text-sm text-slate-500">Retrieving your submissions...</p>
+                  <p className="text-sm text-slate-500">
+                    Retrieving your submissions...
+                  </p>
                 </div>
               ) : historyListings.length === 0 ? (
                 <div className="text-center py-12">
                   <span className="text-4xl">🌾</span>
-                  <p className="text-slate-500 mt-2 font-medium">You haven't listed any items yet.</p>
-                  <p className="text-xs text-slate-400 mt-1">Submit your first batch using the form behind this panel.</p>
+                  <p className="text-slate-500 mt-2 font-medium">
+                    You haven't listed any items yet.
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Submit your first batch using the form behind this panel.
+                  </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {historyListings.map((item) => (
-                    <div key={item._id} className="bg-slate-50/50 dark:bg-slate-800/30 p-4 rounded-xl border border-slate-200/50 flex flex-col gap-3">
+                    <div
+                      key={item._id}
+                      className="bg-slate-50/50 dark:bg-slate-800/30 p-4 rounded-xl border border-slate-200/50 flex flex-col gap-3"
+                    >
                       {/* Display Image (using backend base URL) */}
                       {item.imagePaths?.[0] ? (
                         <img
@@ -675,22 +775,135 @@ const Farmer = () => {
                             <strong>Price:</strong> ₹{item.pricePerAmount}/kg
                           </div>
                           <div>
-                            <strong>Moisture:</strong> {item.moistureLevel || "N/A"}
+                            <strong>Moisture:</strong>{" "}
+                            {item.moistureLevel || "N/A"}
                           </div>
                           <div>
-                            <strong>Packaging:</strong> {item.packagingType || "N/A"}
+                            <strong>Packaging:</strong>{" "}
+                            {item.packagingType || "N/A"}
                           </div>
                           <div>
-                            <strong>MOQ:</strong> {item.minOrderQuantity || 0} kg
+                            <strong>MOQ:</strong> {item.minOrderQuantity || 0}{" "}
+                            kg
                           </div>
                           <div>
                             <strong>Lead Time:</strong> {item.deliveryDays} Days
                           </div>
                         </div>
-                        
+
                         <div className="mt-2 text-[10px] text-slate-400 text-right">
-                          Listed on: {new Date(item.createdAt).toLocaleDateString()}
+                          Listed on:{" "}
+                          {new Date(item.createdAt).toLocaleDateString()}
                         </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* 🔹 Potential Buyers Modal */}
+      {showBuyersModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all duration-300">
+          <div className="bg-white/95 dark:bg-slate-900/95 max-w-4xl w-full max-h-[85vh] rounded-2xl shadow-2xl border border-white/20 flex flex-col overflow-hidden animate-fade-in">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800">
+              <div className="text-left">
+                <h3 className="text-xl font-bold text-slate-900 dark:text-white">
+                  Potential Buyers
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Corporate leads interested in purchasing your listed batches
+                </p>
+              </div>
+              <button
+                onClick={() => setShowBuyersModal(false)}
+                className="h-9 w-9 bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 dark:hover:text-white rounded-full flex items-center justify-center font-bold text-lg transition"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Scrollable Body */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {isLoadingBuyers ? (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-850 mb-3"></div>
+                  <p className="text-sm text-slate-500">
+                    Retrieving interested buyers...
+                  </p>
+                </div>
+              ) : buyersList.length === 0 ? (
+                <div className="text-center py-12">
+                  <span className="text-4xl">💼</span>
+                  <p className="text-slate-500 mt-2 font-medium">
+                    No company leads yet.
+                  </p>
+                  <p className="text-xs text-slate-400 mt-1">
+                    Once a verified buyer clicks "I am Interested" on any of
+                    your batches, their details will display here.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {buyersList.map((interest, idx) => (
+                    <div
+                      key={idx}
+                      className="bg-emerald-50/40 dark:bg-slate-800/30 p-5 rounded-xl border border-emerald-100 dark:border-slate-800 flex flex-col justify-between gap-4 text-left"
+                    >
+                      <div>
+                        {/* Target Item Badge */}
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="bg-emerald-100 dark:bg-emerald-950 text-emerald-850 dark:text-emerald-300 text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-md">
+                            Interested In: {interest.itemName}
+                          </span>
+                          <span className="text-[10px] text-slate-400">
+                            {interest.notifiedAt
+                              ? new Date(
+                                  interest.notifiedAt,
+                                ).toLocaleDateString()
+                              : ""}
+                          </span>
+                        </div>
+
+                        {/* Company Details */}
+                        <h4 className="font-extrabold text-lg text-slate-950 dark:text-white leading-snug">
+                          🏢 {interest.companyName}
+                        </h4>
+
+                        <div className="mt-3 flex flex-col gap-1.5 text-xs text-slate-600 dark:text-slate-300">
+                          <div>
+                            <strong>Contact Name:</strong>{" "}
+                            {interest.contact || "N/A"}
+                          </div>
+                          <div>
+                            <strong>Email ID:</strong> {interest.email || "N/A"}
+                          </div>
+                          <div>
+                            <strong>HQ Location:</strong>{" "}
+                            {interest.location || "N/A"}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Call-to-action buttons */}
+                      <div className="flex gap-2 pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <a
+                          href={`mailto:${interest.email}?subject=Regarding your interest in my ${interest.itemName} listing`}
+                          className="flex-1 text-center bg-emerald-800 hover:bg-emerald-700 text-white font-bold py-2 rounded-lg text-xs transition duration-200"
+                        >
+                          Send Email
+                        </a>
+                        {interest.contact && (
+                          <a
+                            href={`tel:${interest.contact}`}
+                            className="flex-1 text-center bg-slate-100 hover:bg-slate-200 text-slate-850 font-bold py-2 rounded-lg text-xs transition duration-200 border border-slate-200"
+                          >
+                            Call Buyer
+                          </a>
+                        )}
                       </div>
                     </div>
                   ))}

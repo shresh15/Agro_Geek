@@ -6,6 +6,7 @@ const Navbar = ({
   setShowDropdown,
   handleLogout,
   onMyListingsClick,
+  onPotentialBuyersClick,
 }) => {
   return (
     <div className="flex flex-row justify-center items-center">
@@ -25,13 +26,22 @@ const Navbar = ({
         </div>
 
         {/* 🔹 Profile Section with Dropdown & History */}
-        <div className="flex flex-row items-center gap-8 mr-10">
+        <div className="flex flex-row items-center gap-4 mr-10">
           {onMyListingsClick && (
             <button
               onClick={onMyListingsClick}
-              className="bg-green-800 hover:bg-green-700 text-white text-sm px-4 py-2 rounded-lg font-bold transition duration-200 shadow hover:shadow-lg select-none"
+              className="bg-green-800 hover:bg-green-700 text-white text-xs md:text-sm px-3 md:px-4 py-2 rounded-lg font-bold transition duration-200 shadow hover:shadow-lg select-none shrink-0"
             >
               My Listings
+            </button>
+          )}
+
+          {onPotentialBuyersClick && (
+            <button
+              onClick={onPotentialBuyersClick}
+              className="bg-emerald-800 hover:bg-emerald-700 text-white text-xs md:text-sm px-3 md:px-4 py-2 rounded-lg font-bold transition duration-200 shadow hover:shadow-lg select-none shrink-0"
+            >
+              Potential Buyers
             </button>
           )}
 

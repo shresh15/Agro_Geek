@@ -3,8 +3,21 @@ import Data from "../models/Data.js";
 import User from "../models/User.js";
 import multer from "multer";
 import path from "path";
+import jwt from "jsonwebtoken";
 
 const router = express.Router();
+
+const requireAuth = (req, res, next) => {
+  const token = req.cookies?.authToken;
+  if (!token) return res.status(401).json({ message: "Not authenticated" });
+
+  try {
+    req.user = jwt.verify(token, process.env.JWT_SECRET || "default_secret");
+    next();
+  } catch {
+    res.status(401).json({ message: "Invalid or expired session" });
+  }
+};
 
 // Multer configuration for image uploads
 const storage = multer.diskStorage({
@@ -23,7 +36,7 @@ const fileFilter = (req, file, cb) => {
   } else {
     cb(
       new Error("Invalid file type. Only JPEG, PNG, and GIF are allowed."),
-      false
+      false,
     );
   }
 };
@@ -31,87 +44,95 @@ const fileFilter = (req, file, cb) => {
 const upload = multer({ storage, fileFilter });
 
 // 📌 Route to handle farmer data submission
-router.post("/submit", upload.array("images", 5), async (req, res) => {
-  try {
-    const {
-      entityName,
-      amount,
-      pricePerAmount,
-      location,
-      deliveryDays,
-      aadharNumber,
-      category,
-      moistureLevel,
-      isContaminationFree,
-      subType,
-      pickupAvailability,
-      minOrderQuantity,
-      packagingType,
-      isNegotiable,
-      sellerType,
-      contactNumber,
-      address,
-      sellerEmail,
-    } = req.body;
+router.post(
+  "/submit",
+  requireAuth,
+  upload.array("images", 5),
+  async (req, res) => {
+    try {
+      const {
+        entityName,
+        amount,
+        pricePerAmount,
+        location,
+        deliveryDays,
+        aadharNumber,
+        category,
+        moistureLevel,
+        isContaminationFree,
+        subType,
+        pickupAvailability,
+        minOrderQuantity,
+        packagingType,
+        isNegotiable,
+        sellerType,
+        contactNumber,
+        address,
+        sellerEmail,
+      } = req.body;
 
-    // Validate inputs
-    if (
-      !entityName ||
-      !amount ||
-      !pricePerAmount ||
-      !location ||
-      !deliveryDays ||
-      !aadharNumber ||
-      !category
-    ) {
+      // Validate inputs
+      if (
+        !entityName ||
+        !amount ||
+        !pricePerAmount ||
+        !location ||
+        !deliveryDays ||
+        !aadharNumber ||
+        !category
+      ) {
+        res
+          .status(400)
+          .json({ message: "All fields are required", body: req.body });
+        return;
+      }
+
+      // Get image paths (if any)
+      const imagePaths = req.files ? req.files.map((file) => file.path) : [];
+
+      // Create new data entry
+      const newData = new Data({
+        entityName,
+        amount,
+        pricePerAmount,
+        location,
+        deliveryDays,
+        aadharNumber,
+        category,
+        imagePaths, // Save image paths in the database
+        moistureLevel,
+        isContaminationFree:
+          isContaminationFree === "true" || isContaminationFree === true,
+        subType,
+        pickupAvailability,
+        minOrderQuantity: Number(minOrderQuantity) || 0,
+        packagingType,
+        isNegotiable: isNegotiable === "true" || isNegotiable === true,
+        sellerType,
+        contactNumber,
+        address,
+        sellerEmail: (req.user.email || sellerEmail || "").toLowerCase(),
+      });
+
+      // Save to MongoDB
+      await newData.save();
+
       res
-        .status(400)
-        .json({ message: "All fields are required", body: req.body });
-      return;
+        .status(201)
+        .json({ message: "✅ Data submitted successfully!", data: newData });
+    } catch (error) {
+      console.error("❌ Error submitting data:", error);
+      if (error instanceof multer.MulterError) {
+        return res
+          .status(400)
+          .json({ message: "File upload error: " + error.message });
+      }
+      res
+        .status(500)
+        .json({ message: "❌ Server error during data submission" });
     }
-
-    // Get image paths (if any)
-    const imagePaths = req.files ? req.files.map((file) => file.path) : [];
-
-    // Create new data entry
-    const newData = new Data({
-      entityName,
-      amount,
-      pricePerAmount,
-      location,
-      deliveryDays,
-      aadharNumber,
-      category,
-      imagePaths, // Save image paths in the database
-      moistureLevel,
-      isContaminationFree: isContaminationFree === "true" || isContaminationFree === true,
-      subType,
-      pickupAvailability,
-      minOrderQuantity: Number(minOrderQuantity) || 0,
-      packagingType,
-      isNegotiable: isNegotiable === "true" || isNegotiable === true,
-      sellerType,
-      contactNumber,
-      address,
-      sellerEmail,
-    });
-
-    // Save to MongoDB
-    await newData.save();
-
-    res
-      .status(201)
-      .json({ message: "✅ Data submitted successfully!", data: newData });
-  } catch (error) {
-    console.error("❌ Error submitting data:", error);
-    if (error instanceof multer.MulterError) {
-      return res
-        .status(400)
-        .json({ message: "File upload error: " + error.message });
-    }
-    res.status(500).json({ message: "❌ Server error during data submission" });
-  }
-});
+  },
+);
 
 // 📌 Route to fetch farmer data based on category
 router.get("/submissions", async (req, res) => {
@@ -130,7 +151,9 @@ router.get("/submissions", async (req, res) => {
       return res.status(404).json({ message: "No submissions found" });
     }
 
-    res.status(200).json({ message: "✅ Submissions Fetched", data: submissions });
+    res
+      .status(200)
+      .json({ message: "✅ Submissions Fetched", data: submissions });
   } catch (error) {
     console.error("❌ Error fetching submissions:", error);
     res.status(500).json({ message: "❌ Server error during data retrieval" });
@@ -138,18 +161,12 @@ router.get("/submissions", async (req, res) => {
 });
 
 // 📌 Route to fetch all data submitted by a specific seller (by email or contact number)
-router.get("/my-submissions", async (req, res) => {
+router.get("/my-submissions", requireAuth, async (req, res) => {
   try {
-    const { email } = req.query;
-
-    if (!email) {
-      return res
-        .status(400)
-        .json({ message: "Seller email is required" });
-    }
+    const email = req.user.email;
 
     // Retrieve user profile to find their registered phone number
-    const user = await User.findOne({ email });
+    const user = await User.findById(req.user.id);
     let queryConditions = [{ sellerEmail: email }];
 
     if (user && user.phone) {
@@ -157,7 +174,7 @@ router.get("/my-submissions", async (req, res) => {
     }
 
     const submissions = await Data.find({
-      $or: queryConditions
+      $or: queryConditions,
     });
 
     res.status(200).json({ success: true, data: submissions });
@@ -187,7 +204,8 @@ router.post("/notify-farmer", async (req, res) => {
       !companyDetails.location
     ) {
       return res.status(400).json({
-        message: "All company details (name, contact, email, location) are required",
+        message:
+          "All company details (name, contact, email, location) are required",
       });
     }
 

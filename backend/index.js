@@ -2,6 +2,7 @@ import express from "express";
 import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -38,6 +39,7 @@ app.use(
   }),
 );
 app.use(express.json()); // Parse JSON body
+app.use(cookieParser());
 app.get("/", (req, res) => {
   res.send("hello world");
 });

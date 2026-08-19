@@ -3,7 +3,8 @@ import axios from "axios";
 import Navbar from "./Navbar";
 import { useNavigate } from "react-router-dom";
 
-const BACKEND_URL = import.meta.env.VITE_ENV_BACKEND_URL || "http://localhost:8000";
+const BACKEND_URL =
+  import.meta.env.VITE_ENV_BACKEND_URL || "http://localhost:8000";
 
 const Company = () => {
   const [showDropdown, setShowDropdown] = useState(false);
@@ -33,10 +34,9 @@ const Company = () => {
 
   // ✅ Handle Logout
   const handleLogout = () => {
-    localStorage.removeItem("profileImage");
-    localStorage.removeItem("userEmail");
-    localStorage.removeItem("authToken");
-    navigate("/");
+    axios
+      .post(`${BACKEND_URL}/api/auth/logout`, {}, { withCredentials: true })
+      .finally(() => navigate("/"));
   };
 
   // Calculate distance between two coordinates in km (Haversine formula)
@@ -57,16 +57,14 @@ const Company = () => {
   };
 
   const fetchUserProfile = async () => {
-    const token = localStorage.getItem("authToken");
-    const userEmail = localStorage.getItem("userEmail") || "";
     try {
-      const response = await axios.get(`${BACKEND_URL}/api/auth/me?email=${userEmail}`, {
-        headers: { Authorization: `Bearer ${token}` }
+      const response = await axios.get(`${BACKEND_URL}/api/auth/me`, {
+        withCredentials: true,
       });
       if (response.data?.success && response.data?.user) {
         const u = response.data.user;
         setUserProfile(u);
-        
+
         // Auto-complete check
         if (!u.companyName || !u.gstin || !u.industryType) {
           setShowProfileModal(true);
@@ -100,13 +98,24 @@ const Company = () => {
   };
 
   const handleSaveProfile = async () => {
-    if (!compName || !indType || !gstinNumber || !cpName || !cpPhone || !cpEmail || !regAddress || !lat || !lng) {
-      alert("⚠️ All fields (including Geolocation) are required to verify your B2B profile.");
+    if (
+      !compName ||
+      !indType ||
+      !gstinNumber ||
+      !cpName ||
+      !cpPhone ||
+      !cpEmail ||
+      !regAddress ||
+      !lat ||
+      !lng
+    ) {
+      alert(
+        "⚠️ All fields (including Geolocation) are required to verify your B2B profile.",
+      );
       return;
     }
 
     setIsSavingProfile(true);
-    const token = localStorage.getItem("authToken");
     try {
       const response = await axios.put(
         `${BACKEND_URL}/api/auth/profile`,
@@ -125,8 +134,8 @@ const Company = () => {
           maxRadius: Number(radiusLimit),
         },
         {
-          headers: { Authorization: `Bearer ${token}` }
-        }
+          withCredentials: true,
+        },
       );
 
       if (response.data?.success) {
@@ -159,15 +168,11 @@ const Company = () => {
       },
       (error) => {
         alert("⚠️ Location lookup failed. Please enter coordinates manually.");
-      }
+      },
     );
   };
 
   useEffect(() => {
-    const storedProfileImage = localStorage.getItem("profileImage");
-    if (storedProfileImage) {
-      setProfilePic(storedProfileImage);
-    }
     fetchUserProfile();
   }, []);
 
@@ -183,7 +188,7 @@ const Company = () => {
     setError("");
     try {
       const response = await axios.get(
-        `${BACKEND_URL}/api/farmer/submissions?category=${category}`
+        `${BACKEND_URL}/api/farmer/submissions?category=${category}`,
       );
 
       if (response.data && Array.isArray(response.data.data)) {
@@ -194,7 +199,7 @@ const Company = () => {
       }
     } catch (error) {
       setError(
-        `Error fetching data: ${error.response?.data?.message || error.message}`
+        `Error fetching data: ${error.response?.data?.message || error.message}`,
       );
     }
     setLoading(false);
@@ -209,7 +214,12 @@ const Company = () => {
           const sLat = parseFloat(parts[0]);
           const sLng = parseFloat(parts[1]);
           if (!isNaN(sLat) && !isNaN(sLng)) {
-            const distance = calculateDistance(Number(lat), Number(lng), sLat, sLng);
+            const distance = calculateDistance(
+              Number(lat),
+              Number(lng),
+              sLat,
+              sLng,
+            );
             item.computedDistance = distance;
             if (radiusLimit && distance > Number(radiusLimit)) {
               return false;
@@ -229,10 +239,14 @@ const Company = () => {
     }
 
     const companyDetails = {
-      companyName: userProfile.companyName || userProfile.name || "ABC Industries",
+      companyName:
+        userProfile.companyName || userProfile.name || "ABC Industries",
       contact: userProfile.phone || "9876543210",
       email: userProfile.email || "abc@example.com",
-      location: userProfile.registeredAddress || userProfile.address || "Kolkata, India",
+      location:
+        userProfile.registeredAddress ||
+        userProfile.address ||
+        "Kolkata, India",
     };
 
     try {
@@ -241,7 +255,7 @@ const Company = () => {
         {
           submissionId,
           companyDetails,
-        }
+        },
       );
 
       if (response.data.success) {
@@ -255,9 +269,7 @@ const Company = () => {
   };
 
   return (
-    <div
-      className="min-h-screen flex flex-col bg-gradient-to-b from-[#052F17] via-[#A3D9C9] to-[#FAF9F6]"
-    >
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#052F17] via-[#A3D9C9] to-[#FAF9F6]">
       <div className="flex flex-col justify-center items-center w-full">
         <Navbar
           profilePicture={profilePic}
@@ -269,7 +281,9 @@ const Company = () => {
         {/* 🔹 Location & Search Radius Selector Panel */}
         <div className="bg-white/95 backdrop-blur shadow-md rounded-2xl p-6 mt-6 mb-6 max-w-4xl mx-auto w-[90vw] flex flex-col md:flex-row gap-5 items-center justify-between border border-emerald-100/50">
           <div className="flex flex-col text-left">
-            <span className="text-xs uppercase font-extrabold text-emerald-800 tracking-wider">Your Operating Location</span>
+            <span className="text-xs uppercase font-extrabold text-emerald-800 tracking-wider">
+              Your Operating Location
+            </span>
             <div className="flex gap-2 items-center mt-1.5">
               <span className="text-sm font-semibold text-slate-700">
                 {lat && lng ? `📍 ${lat}, ${lng}` : "⚠️ Location Not Set"}
@@ -301,7 +315,9 @@ const Company = () => {
           </div>
 
           <div className="flex flex-col text-left w-full md:w-auto">
-            <label className="text-xs uppercase font-extrabold text-emerald-800 tracking-wider mb-1.5">Search Radius Limit</label>
+            <label className="text-xs uppercase font-extrabold text-emerald-800 tracking-wider mb-1.5">
+              Search Radius Limit
+            </label>
             <select
               value={radiusLimit}
               onChange={(e) => setRadiusLimit(e.target.value)}
@@ -315,7 +331,7 @@ const Company = () => {
               <option value="999999">No Limit (Custom)</option>
             </select>
           </div>
-          
+
           <button
             onClick={() => setShowProfileModal(true)}
             className="bg-emerald-800 hover:bg-emerald-750 text-white font-extrabold text-sm px-5 py-3 rounded-xl transition shadow-md duration-200"
@@ -326,7 +342,10 @@ const Company = () => {
 
         {/* Category Dropdown */}
         <div className="w-[90vw] h-[12vh] flex flex-col justify-center items-center mb-4">
-          <label htmlFor="options" className="text-sm font-extrabold text-emerald-950 uppercase tracking-wider mb-2">
+          <label
+            htmlFor="options"
+            className="text-sm font-extrabold text-emerald-950 uppercase tracking-wider mb-2"
+          >
             Please Select The Category Of Purchase
           </label>
           <select
@@ -344,14 +363,21 @@ const Company = () => {
 
         {/* Product Details Section */}
         <div className="w-full max-w-6xl mx-auto px-6 pb-12">
-          {loading && <p className="text-center text-lg font-semibold text-emerald-900">Loading listings...</p>}
-          {error && <p className="text-red-500 text-center font-semibold">{error}</p>}
+          {loading && (
+            <p className="text-center text-lg font-semibold text-emerald-900">
+              Loading listings...
+            </p>
+          )}
+          {error && (
+            <p className="text-red-500 text-center font-semibold">{error}</p>
+          )}
 
           {getFilteredSubmissions().length === 0 &&
             !loading &&
             selectedCategory !== "select" && (
               <p className="text-center text-lg font-semibold text-slate-500 py-12">
-                No listings found within your preferred categories or search radius limit.
+                No listings found within your preferred categories or search
+                radius limit.
               </p>
             )}
 
@@ -388,7 +414,10 @@ const Company = () => {
                       <strong>Amount:</strong> {submission.amount}
                     </p>
                     <p>
-                      <strong>Price per kg:</strong> {submission.pricePerAmount} {submission.isNegotiable ? "💸 (Negotiable)" : "🔒 (Fixed)"}
+                      <strong>Price per kg:</strong> {submission.pricePerAmount}{" "}
+                      {submission.isNegotiable
+                        ? "💸 (Negotiable)"
+                        : "🔒 (Fixed)"}
                     </p>
                     <p>
                       <strong>Location:</strong> {submission.location}
@@ -400,10 +429,14 @@ const Company = () => {
                       <strong>Delivery Days:</strong> {submission.deliveryDays}
                     </p>
                     <p>
-                      <strong>Moisture Level:</strong> {submission.moistureLevel || "N/A"}
+                      <strong>Moisture Level:</strong>{" "}
+                      {submission.moistureLevel || "N/A"}
                     </p>
                     <p>
-                      <strong>Purity:</strong> {submission.isContaminationFree ? "✅ Free from plastic/synthetic material" : "⚠️ Not self-declared"}
+                      <strong>Purity:</strong>{" "}
+                      {submission.isContaminationFree
+                        ? "✅ Free from plastic/synthetic material"
+                        : "⚠️ Not self-declared"}
                     </p>
                     {submission.subType && (
                       <p>
@@ -411,19 +444,26 @@ const Company = () => {
                       </p>
                     )}
                     <p>
-                      <strong>Packaging:</strong> {submission.packagingType || "N/A"}
+                      <strong>Packaging:</strong>{" "}
+                      {submission.packagingType || "N/A"}
                     </p>
                     <p>
-                      <strong>Min Order Qty (MOQ):</strong> {submission.minOrderQuantity ? `${submission.minOrderQuantity} kg` : "N/A"}
+                      <strong>Min Order Qty (MOQ):</strong>{" "}
+                      {submission.minOrderQuantity
+                        ? `${submission.minOrderQuantity} kg`
+                        : "N/A"}
                     </p>
                     <p>
-                      <strong>Logistics:</strong> {submission.pickupAvailability || "N/A"}
+                      <strong>Logistics:</strong>{" "}
+                      {submission.pickupAvailability || "N/A"}
                     </p>
                     <p>
-                      <strong>Seller Profile:</strong> {submission.sellerType || "Individual farmer"}
+                      <strong>Seller Profile:</strong>{" "}
+                      {submission.sellerType || "Individual farmer"}
                     </p>
                     <p>
-                      <strong>Contact:</strong> {submission.contactNumber || "N/A"}
+                      <strong>Contact:</strong>{" "}
+                      {submission.contactNumber || "N/A"}
                     </p>
                   </div>
                 </div>
@@ -447,8 +487,12 @@ const Company = () => {
           <div className="bg-white max-w-2xl w-full rounded-2xl shadow-2xl border border-slate-100 flex flex-col overflow-hidden animate-fade-in my-8">
             <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-emerald-50/50">
               <div className="text-left">
-                <h3 className="text-xl font-bold text-green-950">Verify B2B Profile Details</h3>
-                <p className="text-xs text-slate-500">Fill in your business details to complete registration</p>
+                <h3 className="text-xl font-bold text-green-950">
+                  Verify B2B Profile Details
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Fill in your business details to complete registration
+                </p>
               </div>
               {userProfile?.companyName && (
                 <button
@@ -462,10 +506,14 @@ const Company = () => {
 
             <div className="p-6 overflow-y-auto max-h-[70vh] flex flex-col gap-4 text-left">
               {/* General Info */}
-              <h4 className="text-sm font-bold text-green-800 border-b pb-1">1. Business Information</h4>
+              <h4 className="text-sm font-bold text-green-800 border-b pb-1">
+                1. Business Information
+              </h4>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Company Name</label>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                    Company Name
+                  </label>
                   <input
                     type="text"
                     value={compName}
@@ -475,14 +523,18 @@ const Company = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Industry Type</label>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                    Industry Type
+                  </label>
                   <select
                     value={indType}
                     onChange={(e) => setIndType(e.target.value)}
                     className="border p-2.5 rounded-lg w-full text-black bg-white border-gray-300"
                   >
                     <option value="">Select industry</option>
-                    <option value="Fertilizer manufacturer">Fertilizer manufacturer</option>
+                    <option value="Fertilizer manufacturer">
+                      Fertilizer manufacturer
+                    </option>
                     <option value="Manure processor">Manure processor</option>
                     <option value="Composting unit">Composting unit</option>
                     <option value="Other">Other</option>
@@ -492,7 +544,9 @@ const Company = () => {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">GSTIN Number</label>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                    GSTIN Number
+                  </label>
                   <input
                     type="text"
                     value={gstinNumber}
@@ -502,7 +556,9 @@ const Company = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Daily Processing Capacity</label>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                    Daily Processing Capacity
+                  </label>
                   <input
                     type="text"
                     value={capacity}
@@ -514,10 +570,14 @@ const Company = () => {
               </div>
 
               {/* Contact Info */}
-              <h4 className="text-sm font-bold text-green-800 border-b pb-1 mt-2">2. Contact Person</h4>
+              <h4 className="text-sm font-bold text-green-800 border-b pb-1 mt-2">
+                2. Contact Person
+              </h4>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Full Name</label>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                    Full Name
+                  </label>
                   <input
                     type="text"
                     value={cpName}
@@ -526,7 +586,9 @@ const Company = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Phone</label>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                    Phone
+                  </label>
                   <input
                     type="text"
                     value={cpPhone}
@@ -535,7 +597,9 @@ const Company = () => {
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Email</label>
+                  <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                    Email
+                  </label>
                   <input
                     type="email"
                     value={cpEmail}
@@ -546,9 +610,13 @@ const Company = () => {
               </div>
 
               {/* Registered Address */}
-              <h4 className="text-sm font-bold text-green-800 border-b pb-1 mt-2">3. Address & Operating Location</h4>
+              <h4 className="text-sm font-bold text-green-800 border-b pb-1 mt-2">
+                3. Address & Operating Location
+              </h4>
               <div>
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Registered Address (for invoicing)</label>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                  Registered Address (for invoicing)
+                </label>
                 <textarea
                   value={regAddress}
                   onChange={(e) => setRegAddress(e.target.value)}
@@ -560,7 +628,9 @@ const Company = () => {
 
               {/* Geolocation Coordinates */}
               <div>
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">Operating Geolocation coordinates</label>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-1">
+                  Operating Geolocation coordinates
+                </label>
                 <div className="flex gap-2 items-center">
                   <input
                     type="text"
@@ -587,9 +657,13 @@ const Company = () => {
               </div>
 
               {/* Waste Preferences */}
-              <h4 className="text-sm font-bold text-green-800 border-b pb-1 mt-2">4. Preferences</h4>
+              <h4 className="text-sm font-bold text-green-800 border-b pb-1 mt-2">
+                4. Preferences
+              </h4>
               <div>
-                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">Preferred Waste Categories (Multi-select)</label>
+                <label className="text-xs font-semibold text-slate-500 uppercase tracking-wider block mb-2">
+                  Preferred Waste Categories (Multi-select)
+                </label>
                 <div className="flex flex-wrap gap-3">
                   {[
                     { id: "fallen_leaves", name: "Fallen Leaves" },
@@ -611,7 +685,9 @@ const Company = () => {
                           if (e.target.checked) {
                             setPreferredCats([...preferredCats, cat.id]);
                           } else {
-                            setPreferredCats(preferredCats.filter((id) => id !== cat.id));
+                            setPreferredCats(
+                              preferredCats.filter((id) => id !== cat.id),
+                            );
                           }
                         }}
                         className="hidden"

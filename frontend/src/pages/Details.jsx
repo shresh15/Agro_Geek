@@ -94,21 +94,18 @@ const Details = () => {
         const loginResponse = await axios.post(
           `${BACKEND_URL}/api/auth/login`,
           submissionData,
+          { withCredentials: true },
         );
-        localStorage.setItem("userEmail", submissionData.email);
-        localStorage.setItem("authToken", loginResponse.data.token);
         navigate(role === "farmer" ? "/Farmer" : "/Company");
       } else {
         // Signup API Call
         const signupResponse = await axios.post(
           `${BACKEND_URL}/api/auth/register`,
           submissionData,
+          { withCredentials: true },
         );
         console.log("Signup Response:", signupResponse.data);
         alert("Registration Successful!");
-        localStorage.setItem("userEmail", submissionData.email);
-        localStorage.setItem("profileImage", submissionData.image);
-        localStorage.setItem("authToken", signupResponse.data.token);
         navigate(role === "farmer" ? "/Farmer" : "/Company");
       }
     } catch (error) {

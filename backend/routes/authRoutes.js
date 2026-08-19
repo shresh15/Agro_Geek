@@ -4,6 +4,16 @@ import User from "../models/User.js";
 import jwt from "jsonwebtoken";
 
 const router = express.Router();
+const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
+
+const setAuthCookie = (res, token) => {
+  res.cookie("authToken", token, {
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+};
 
 // 📌 User Registration API
 router.post("/register", async (req, res) => {
@@ -25,16 +35,26 @@ router.post("/register", async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create new user
-    const newUser = new User({ name, email, phone, address, password: hashedPassword, role });
+    const newUser = new User({
+      name,
+      email,
+      phone,
+      address,
+      password: hashedPassword,
+      role,
+    });
     await newUser.save();
 
     const token = jwt.sign(
-      { id: newUser._id, role: newUser.role },
-      process.env.JWT_SECRET || "default_secret",
-      { expiresIn: "7d" }
+      { id: newUser._id, email: newUser.email, role: newUser.role },
+      JWT_SECRET,
+      { expiresIn: "7d" },
     );
 
-    res.status(201).json({ message: "✅ Registration successful!", token, user: newUser });
+    setAuthCookie(res, token);
+    res
+      .status(201)
+      .json({ message: "✅ Registration successful!", user: newUser });
   } catch (error) {
     console.error("Registration Error:", error);
     res.status(500).json({ message: "❌ Server error during registration" });
@@ -48,7 +68,9 @@ router.post("/login", async (req, res) => {
 
     // Validate input
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
     }
 
     // Check user
@@ -64,12 +86,13 @@ router.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET || "default_secret",
-      { expiresIn: "7d" }
+      { id: user._id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: "7d" },
     );
 
-    res.status(200).json({ message: "✅ Login successful!", token, user });
+    setAuthCookie(res, token);
+    res.status(200).json({ message: "✅ Login successful!", user });
   } catch (error) {
     console.error("Login Error:", error);
     res.status(500).json({ message: "❌ Server error during login" });
@@ -79,27 +102,11 @@ router.post("/login", async (req, res) => {
 // 📌 Route to get the current authenticated user's profile from MongoDB
 router.get("/me", async (req, res) => {
   try {
-    let token = req.header("Authorization");
-    let userId = null;
+    const token = req.cookies?.authToken;
+    if (!token) return res.status(401).json({ message: "Not authenticated" });
 
-    if (token && token !== "undefined" && token !== "null" && token !== "Bearer undefined" && token !== "Bearer null") {
-      if (token.startsWith("Bearer ")) {
-        token = token.slice(7);
-      }
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "default_secret");
-        userId = decoded.id;
-      } catch (err) {
-        console.warn("⚠️ Token verification failed, using email query fallback");
-      }
-    }
-
-    let user;
-    if (userId) {
-      user = await User.findById(userId).select("-password");
-    } else if (req.query.email) {
-      user = await User.findOne({ email: req.query.email }).select("-password");
-    }
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.id).select("-password");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -108,45 +115,34 @@ router.get("/me", async (req, res) => {
     res.status(200).json({ success: true, user });
   } catch (error) {
     console.error("❌ Error fetching current user:", error);
-    res.status(401).json({ message: "Invalid or expired token" });
+    res.status(401).json({ message: "Invalid or expired session" });
   }
+});
+
+router.post("/logout", (req, res) => {
+  res.clearCookie("authToken", {
+    httpOnly: true,
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    secure: process.env.NODE_ENV === "production",
+  });
+  res.status(200).json({ message: "Logged out" });
 });
 
 // 📌 Route to update the authenticated user's profile in MongoDB
 router.put("/profile", async (req, res) => {
   try {
-    let token = req.header("Authorization");
-    let userId = null;
-
-    if (token && token !== "undefined" && token !== "null" && token !== "Bearer undefined" && token !== "Bearer null") {
-      if (token.startsWith("Bearer ")) {
-        token = token.slice(7);
-      }
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || "default_secret");
-        userId = decoded.id;
-      } catch (err) {
-        console.warn("⚠️ Token verification failed, using email update fallback");
-      }
-    }
+    const token = req.cookies?.authToken;
+    if (!token) return res.status(401).json({ message: "Not authenticated" });
+    const decoded = jwt.verify(token, JWT_SECRET);
 
     const updateData = { ...req.body };
     delete updateData.password;
 
-    let updatedUser;
-    if (userId) {
-      updatedUser = await User.findByIdAndUpdate(
-        userId,
-        { $set: updateData },
-        { new: true }
-      ).select("-password");
-    } else if (req.body.email) {
-      updatedUser = await User.findOneAndUpdate(
-        { email: req.body.email },
-        { $set: updateData },
-        { new: true }
-      ).select("-password");
-    }
+    const updatedUser = await User.findByIdAndUpdate(
+      decoded.id,
+      { $set: updateData },
+      { new: true },
+    ).select("-password");
 
     if (!updatedUser) {
       return res.status(404).json({ message: "User not found" });
