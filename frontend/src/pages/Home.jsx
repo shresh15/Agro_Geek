@@ -1,10 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import imageone from "../assets/darkened_image1.png";
-import imagetwo from "../assets/darkened_image2.png";
-import imagethree from "../assets/darkened_image3.png";
 import logonew from "../assets/Logonew.png";
-import collagepage from "../assets/collageremoved.png";
+import collagepage from "../assets/leaves.jpg";
 import { useEffect, useState } from "react";
 import { Element } from "react-scroll";
 import {
@@ -433,7 +430,7 @@ const Home = () => {
               initial="initial"
               whileInView="whileInView"
               viewport={{ once: true, margin: "-100px" }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16"
+              className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16 max-w-4xl mx-auto"
             >
               {/* Card 1 */}
               <motion.div
@@ -485,62 +482,6 @@ const Home = () => {
                     className="text-xs font-semibold text-emerald-800 hover:text-emerald-600 flex items-center gap-1 cursor-pointer"
                   >
                     List Resources <FiArrowUpRight />
-                  </span>
-                </div>
-              </motion.div>
-
-              {/* Card 3 */}
-              <motion.div
-                variants={fadeInUp}
-                className="bg-white p-8 rounded-2xl shadow-md border border-slate-100 hover:border-emerald-200 hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
-              >
-                <div>
-                  <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-6 group-hover:bg-emerald-800 group-hover:text-white transition-colors duration-300">
-                    <FiCpu size={24} />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-3">
-                    AI Sourcing Guide
-                  </h3>
-                  <p className="text-slate-500 text-sm leading-relaxed">
-                    Leverage machine learning tools for crop demand analysis,
-                    smart pricing models, and botanical matching.
-                  </p>
-                </div>
-                <div className="mt-6 pt-4 border-t border-slate-50">
-                  <a
-                    href="https://ayurvai.streamlit.app/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-semibold text-emerald-800 hover:text-emerald-600 flex items-center gap-1"
-                  >
-                    Open AI Portal <FiArrowUpRight />
-                  </a>
-                </div>
-              </motion.div>
-
-              {/* Card 4 */}
-              <motion.div
-                variants={fadeInUp}
-                className="bg-white p-8 rounded-2xl shadow-md border border-slate-100 hover:border-emerald-200 hover:shadow-xl transition-all duration-300 flex flex-col justify-between group"
-              >
-                <div>
-                  <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center mb-6 group-hover:bg-emerald-800 group-hover:text-white transition-colors duration-300">
-                    <FiCloudRain size={24} />
-                  </div>
-                  <h3 className="text-lg font-bold text-slate-800 mb-3">
-                    Weather Analytics
-                  </h3>
-                  <p className="text-slate-500 text-sm leading-relaxed">
-                    Check immediate local weather reports to plan planting,
-                    harvesting, and logistic windows accurately.
-                  </p>
-                </div>
-                <div className="mt-6 pt-4 border-t border-slate-50">
-                  <span
-                    onClick={() => navigate("/weather")}
-                    className="text-xs font-semibold text-emerald-800 hover:text-emerald-600 flex items-center gap-1 cursor-pointer"
-                  >
-                    View Weather Forecast <FiArrowUpRight />
                   </span>
                 </div>
               </motion.div>
@@ -757,24 +698,6 @@ const Home = () => {
                 >
                   Services
                 </span>
-              </li>
-              <li>
-                <span
-                  onClick={() => navigate("/weather")}
-                  className="hover:text-emerald-400 cursor-pointer transition-colors"
-                >
-                  Weather Reports
-                </span>
-              </li>
-              <li>
-                <a
-                  href="https://ayurvai.streamlit.app/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="hover:text-emerald-400 transition-colors"
-                >
-                  AI Sourcing Guide
-                </a>
               </li>
             </ul>
           </div>

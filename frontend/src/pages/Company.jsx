@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import bgnew from "../assets/bgnew.jpg";
 import Navbar from "./Navbar";
 import { useNavigate } from "react-router-dom";
 
